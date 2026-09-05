@@ -28,7 +28,9 @@ import androidx.navigation.NavController
 import com.econova.econova.data.PlantRepository
 import com.econova.econova.model.Plant
 import com.econova.econova.model.Rarity
-
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.material.icons.filled.Delete
 @Composable
 fun InventoryScreen(navController: NavController) {
     val plants by PlantRepository.plants.collectAsState()
@@ -68,15 +70,18 @@ fun InventoryScreen(navController: NavController) {
                     imagePath = capturedPaths[plant.id],
                     onClick = {
                         if (plant.isCaught) navController.navigate("detail/${plant.id}")
-                    }
+                    },
+                    onDelete = { PlantRepository.deletePlantData(plant.id) }
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun PokedexStyleCard(plant: Plant, imagePath: String?, onClick: () -> Unit) {
+fun PokedexStyleCard(plant: Plant, imagePath: String?, onClick: () -> Unit, onDelete: () -> Unit) {
+    var showConfirm by remember { mutableStateOf(false) }
     val capturedBitmap = remember(imagePath) {
         imagePath?.let { BitmapFactory.decodeFile(it)?.asImageBitmap() }
     }
@@ -88,7 +93,11 @@ fun PokedexStyleCard(plant: Plant, imagePath: String?, onClick: () -> Unit) {
             .aspectRatio(1f)
             .clip(RoundedCornerShape(18.dp))
             .background(bgColor)
-            .clickable(enabled = plant.isCaught, onClick = onClick)
+            .combinedClickable(
+                enabled = plant.isCaught,
+                onClick = onClick,
+                onLongClick = { showConfirm = true }
+            )
             .padding(10.dp)
     ) {
         Text(
@@ -134,6 +143,23 @@ fun PokedexStyleCard(plant: Plant, imagePath: String?, onClick: () -> Unit) {
                 Text("???", color = Color.Gray, fontSize = 13.sp)
             }
         }
+    }
+
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            title = { Text("Delete ${plant.name}'s data?") },
+            text = { Text("This removes its captured photo and catch status. You can catch it again later.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDelete()
+                    showConfirm = false
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
