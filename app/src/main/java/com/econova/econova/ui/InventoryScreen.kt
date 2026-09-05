@@ -1,5 +1,7 @@
 package com.econova.econova.ui
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,16 +10,17 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,77 +29,109 @@ import com.econova.econova.data.PlantRepository
 import com.econova.econova.model.Plant
 import com.econova.econova.model.Rarity
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryScreen(navController: NavController) {
     val plants by PlantRepository.plants.collectAsState()
-    val caughtCount = plants.count { it.isCaught }
+    val capturedPaths by PlantRepository.capturedImagePaths.collectAsState()
+    var query by remember { mutableStateOf("") }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Plant Pokedex (${caughtCount}/${plants.size})", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            )
-        }
-    ) { padding ->
+    val filtered = remember(plants, query) {
+        if (query.isBlank()) plants
+        else plants.filter { it.name.contains(query, ignoreCase = true) }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        EconovaTopBar()
+
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = { Text("Search") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(padding)
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxSize()
         ) {
-            items(plants) { plant ->
-                PlantCard(plant) {
-                    if (plant.isCaught) {
-                        navController.navigate("detail/${plant.id}")
+            items(filtered) { plant ->
+                PokedexStyleCard(
+                    plant = plant,
+                    imagePath = capturedPaths[plant.id],
+                    onClick = {
+                        if (plant.isCaught) navController.navigate("detail/${plant.id}")
                     }
-                }
+                )
             }
         }
     }
 }
 
 @Composable
-fun PlantCard(plant: Plant, onClick: () -> Unit) {
-    Card(
+fun PokedexStyleCard(plant: Plant, imagePath: String?, onClick: () -> Unit) {
+    val capturedBitmap = remember(imagePath) {
+        imagePath?.let { BitmapFactory.decodeFile(it)?.asImageBitmap() }
+    }
+    val bgColor = if (plant.isCaught) getRarityColor(plant.rarity).copy(alpha = 0.18f)
+    else Color(0xFFEDEDED)
+
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(180.dp)
-            .clickable(enabled = plant.isCaught, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (plant.isCaught) Color.White else Color.LightGray.copy(alpha = 0.5f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(18.dp))
+            .background(bgColor)
+            .clickable(enabled = plant.isCaught, onClick = onClick)
+            .padding(10.dp)
     ) {
+        Text(
+            "#${plant.id.padStart(3, '0')}",
+            fontSize = 11.sp,
+            color = Color.Gray,
+            modifier = Modifier.align(Alignment.TopEnd)
+        )
+
         Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             if (plant.isCaught) {
-                Icon(
-                    Icons.Default.Eco, 
-                    contentDescription = null, 
-                    modifier = Modifier.size(60.dp),
-                    tint = getRarityColor(plant.rarity)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(plant.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(plant.rarity.name, fontSize = 12.sp, color = getRarityColor(plant.rarity))
+                if (capturedBitmap != null) {
+                    Image(
+                        bitmap = capturedBitmap,
+                        contentDescription = plant.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Eco,
+                        contentDescription = null,
+                        modifier = Modifier.size(56.dp),
+                        tint = getRarityColor(plant.rarity)
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(plant.name, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             } else {
                 Icon(
-                    Icons.Default.QuestionMark, 
-                    contentDescription = null, 
-                    modifier = Modifier.size(60.dp),
+                    Icons.Default.QuestionMark,
+                    contentDescription = null,
+                    modifier = Modifier.size(56.dp),
                     tint = Color.Gray
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("???", color = Color.Gray)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text("???", color = Color.Gray, fontSize = 13.sp)
             }
         }
     }
@@ -104,7 +139,5 @@ fun PlantCard(plant: Plant, onClick: () -> Unit) {
 
 fun getRarityColor(rarity: Rarity): Color = when (rarity) {
     Rarity.COMMON -> Color(0xFF4CAF50)
-    Rarity.UNCOMMON -> Color(0xFF2196F3)
-    Rarity.RARE -> Color(0xFF9C27B0)
-    Rarity.LEGENDARY -> Color(0xFFFF9800)
+    Rarity.NATIVE -> Color(0xFF9C27B0)
 }

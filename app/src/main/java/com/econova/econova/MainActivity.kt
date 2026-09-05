@@ -1,5 +1,5 @@
 package com.econova.econova
-
+import androidx.compose.ui.graphics.Color
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -66,7 +66,9 @@ fun EconovaApp() {
     Scaffold(
         bottomBar = {
             if (currentDestination?.route != "detail/{plantId}") {
-                NavigationBar {
+                NavigationBar (
+                    containerColor = Color(0xFF1B5E20)
+                ){
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Camera, contentDescription = "Scan") },
                         label = { Text("Scan") },

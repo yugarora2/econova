@@ -13,5 +13,5 @@ data class Plant(
 )
 
 enum class Rarity {
-    COMMON, UNCOMMON, RARE, LEGENDARY
+    COMMON, NATIVE
 }

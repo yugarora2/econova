@@ -1,86 +1,148 @@
 package com.econova.econova.ui
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.econova.econova.data.PlantRepository
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlantDetailScreen(plantId: String?, navController: NavController) {
     val plant = plantId?.let { PlantRepository.getPlant(it) } ?: return
+    val capturedPaths by PlantRepository.capturedImagePaths.collectAsState()
+    val imagePath = capturedPaths[plant.id]
+    val capturedBitmap = remember(imagePath) {
+        imagePath?.let { BitmapFactory.decodeFile(it)?.asImageBitmap() }
+    }
+    val headerColor = getRarityColor(plant.rarity)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(plant.name) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+    var selectedTab by remember { mutableStateOf(0) }
+    val tabs = listOf("About", "Habitat", "Conservation")
+
+    Column(modifier = Modifier.fillMaxSize()) {
+
+        // Colored curved header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(
+                    color = headerColor,
+                    shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
+                )
+        ) {
+            IconButton(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            }
+            Text(
+                "#${plant.id.padStart(3, '0')}",
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 13.sp,
+                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
             )
+            Column(
+                modifier = Modifier.align(Alignment.Center).padding(bottom = 40.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(plant.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                Text(plant.rarity.name, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+            }
         }
-    ) { padding ->
+
+        // Floating captured photo overlapping the header curve
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = (-56).dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(112.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color.White)
+                    .padding(6.dp)
+            ) {
+                if (capturedBitmap != null) {
+                    Image(
+                        bitmap = capturedBitmap,
+                        contentDescription = plant.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(22.dp))
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize().background(headerColor.copy(alpha = 0.2f)))
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
+                .fillMaxSize()
+                .offset(y = (-40).dp)
+                .padding(horizontal = 20.dp)
         ) {
             Text(
-                text = plant.scientificName,
-                fontSize = 18.sp,
-                fontStyle = FontStyle.Italic,
-                color = Color.Gray
+                plant.scientificName,
+                fontSize = 15.sp,
+                color = Color.Gray,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Badge(containerColor = getRarityColor(plant.rarity)) {
-                Text(plant.rarity.name, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                StatusChip(text = plant.habitat, color = headerColor)
+                StatusChip(text = plant.conservationStatus, color = Color(0xFF757575))
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            DetailSection(title = "AI Botanical Guide", content = plant.description)
-            DetailSection(title = "Habitat", content = plant.habitat)
-            DetailSection(title = "Ecological Importance", content = plant.ecologicalImportance)
-            
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-            
-            Text(
-                "Conservation Awareness", 
-                fontWeight = FontWeight.Bold, 
-                fontSize = 20.sp, 
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Status: ${plant.conservationStatus}", fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(plant.ecologicalImportance) // Reusing for demo
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // AI Chatbot Placeholder
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Ask the Botanical Guide", fontWeight = FontWeight.Bold)
-                    Text("AI-powered chat coming soon...", fontStyle = FontStyle.Italic, fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            TabRow(selectedTabIndex = selectedTab) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(title) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                when (selectedTab) {
+                    0 -> Text(plant.description, fontSize = 15.sp, lineHeight = 22.sp)
+                    1 -> Text(
+                        "Found in: ${plant.habitat}\n\n${plant.ecologicalImportance}",
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp
+                    )
+                    2 -> Text(
+                        "Status: ${plant.conservationStatus}\n\n${plant.ecologicalImportance}",
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp
+                    )
                 }
             }
         }
@@ -88,9 +150,13 @@ fun PlantDetailScreen(plantId: String?, navController: NavController) {
 }
 
 @Composable
-fun DetailSection(title: String, content: String) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        Text(content)
+fun StatusChip(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(color.copy(alpha = 0.15f))
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+    ) {
+        Text(text, color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
 }

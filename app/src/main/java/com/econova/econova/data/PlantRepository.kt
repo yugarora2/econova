@@ -23,7 +23,7 @@ object PlantRepository {
             Plant(
                 "1", "Candi-leaf", "Stevia rebaudiana",
                 "A sweet leaf plant known for its natural sweetness.",
-                "Tropical/Subtropical", "Natural sweetener source.", "Vulnerable", Rarity.UNCOMMON
+                "Tropical/Subtropical", "Natural sweetener source.", "Vulnerable", Rarity.COMMON
             ),
             Plant(
                 "2", "Neem", "Azadirachta indica",
@@ -33,35 +33,49 @@ object PlantRepository {
             Plant(
                 "3", "Holy Basil", "Ocimum tenuiflorum",
                 "An aromatic perennial plant known as Tulsi.",
-                "Indian subcontinent", "Cultural and medicinal significance.", "Least Concern", Rarity.COMMON
+                "Indian subcontinent", "Cultural and medicinal significance.", "Least Concern", Rarity.NATIVE
             ),
             Plant(
                 "4", "Golden Shower", "Cassia fistula",
                 "A flowering plant with bright yellow pendulous flowers.",
-                "Tropical forests", "Attracts bees and butterflies.", "Least Concern", Rarity.UNCOMMON
+                "Tropical forests", "Attracts bees and butterflies.", "Least Concern", Rarity.COMMON
             ),
             Plant(
                 "5", "Banyan", "Ficus benghalensis",
                 "A large tree that starts its life as an epiphyte.",
-                "Indian subcontinent", "A miniature ecosystem in itself.", "Least Concern", Rarity.RARE
+                "Indian subcontinent", "A miniature ecosystem in itself.", "Least Concern", Rarity.NATIVE
             ),
             Plant(
                 "6", "Peepal", "Ficus religiosa",
                 "A species of fig native to the Indian subcontinent.",
-                "Indo-Gangetic Plain", "Significant oxygen producer.", "Least Concern", Rarity.COMMON
+                "Indo-Gangetic Plain", "Significant oxygen producer.", "Least Concern", Rarity.NATIVE
             ),
             Plant(
                 "7", "Amla", "Phyllanthus emblica",
                 "The Indian gooseberry, famous for its Vitamin C.",
-                "Tropical & Subtropical", "Highly medicinal and edible.", "Data Deficient", Rarity.RARE
+                "Tropical & Subtropical", "Highly medicinal and edible.", "Data Deficient", Rarity.NATIVE
             )
         )
     )
     private val _capturedImages = MutableStateFlow<Map<String, Bitmap>>(emptyMap())
     val capturedImages = _capturedImages.asStateFlow()
 
+    // File path per plant ID, once the write to disk completes. UI screens
+// observe this (rather than the in-memory bitmap map) so photos are
+// available again after an app restart.
+    private val _capturedImagePaths = MutableStateFlow<Map<String, String>>(emptyMap())
+    val capturedImagePaths = _capturedImagePaths.asStateFlow()
+
     fun saveCapturedImage(id: String, bitmap: Bitmap) {
+        // Show it immediately in the hologram card this session.
         _capturedImages.value = _capturedImages.value + (id to bitmap)
+
+        if (isInitialized) {
+            repoScope.launch {
+                val path = PlantImageStore.saveImage(appContext, id, bitmap)
+                _capturedImagePaths.value = _capturedImagePaths.value + (id to path)
+            }
+        }
     }
 
     fun getCapturedImage(id: String): Bitmap? = _capturedImages.value[id]
@@ -78,6 +92,8 @@ object PlantRepository {
         isInitialized = true
         appContext = context.applicationContext
 
+        _capturedImagePaths.value = PlantImageStore.existingImagePaths(appContext)
+
         repoScope.launch {
             val caughtIds = PlantDataStore.caughtIdsFlow(appContext).first()
             if (caughtIds.isNotEmpty()) {
@@ -88,7 +104,6 @@ object PlantRepository {
             }
         }
     }
-
     fun catchPlant(id: String) {
         val currentList = _plants.value.toMutableList()
         val index = currentList.indexOfFirst { it.id == id }
