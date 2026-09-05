@@ -63,9 +63,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
 
     // TensorFlow Lite
-    implementation(libs.tensorflow.lite)
-    implementation(libs.tensorflow.lite.support)
-    implementation(libs.tensorflow.lite.metadata)
+    implementation("com.google.ai.edge.litert:litert:2.1.0")
     implementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

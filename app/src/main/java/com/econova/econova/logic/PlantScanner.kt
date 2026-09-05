@@ -4,9 +4,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import org.tensorflow.lite.Interpreter
-import org.tensorflow.lite.support.common.FileUtil
+import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.channels.FileChannel
 
 class PlantScanner(private val context: Context) {
 
@@ -24,52 +25,128 @@ class PlantScanner(private val context: Context) {
 
     init {
         try {
-            val model = FileUtil.loadMappedFile(context, MODEL_FILE)
+            val model = loadModelFile(context, MODEL_FILE)
             interpreter = Interpreter(model)
-            val inputShape = interpreter!!.getInputTensor(0).shape() // [1, H, W, 3]
+
+            val inputShape = interpreter!!.getInputTensor(0).shape()
             inputSize = inputShape[1]
+
         } catch (e: Exception) {
             Log.e("PlantScanner", "Error loading model", e)
         }
+    }
+
+    private fun loadModelFile(
+        context: Context,
+        modelName: String
+    ): ByteBuffer {
+
+        val fileDescriptor = context.assets.openFd(modelName)
+
+        val inputStream =
+            FileInputStream(fileDescriptor.fileDescriptor)
+
+        val fileChannel =
+            inputStream.channel
+
+        return fileChannel.map(
+            FileChannel.MapMode.READ_ONLY,
+            fileDescriptor.startOffset,
+            fileDescriptor.declaredLength
+        )
     }
 
     /** Scans a cropped frame and returns the detected plant ID, or null if nothing confident enough. */
     fun scanFrame(bitmap: Bitmap): String? {
         val interp = interpreter ?: return null
 
-        val resized = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
+        val resized =
+            Bitmap.createScaledBitmap(
+                bitmap,
+                inputSize,
+                inputSize,
+                true
+            )
+
         val inputBuffer = bitmapToByteBuffer(resized)
 
-        val outputShape = interp.getOutputTensor(0).shape() // e.g. [1, 4+numClasses, numAnchors]
-        val output = Array(outputShape[0]) { Array(outputShape[1]) { FloatArray(outputShape[2]) } }
+        val outputShape =
+            interp.getOutputTensor(0).shape()
+
+        val output =
+            Array(outputShape[0]) {
+                Array(outputShape[1]) {
+                    FloatArray(outputShape[2])
+                }
+            }
 
         interp.run(inputBuffer, output)
 
-        return parseBestDetection(output[0], outputShape[1], outputShape[2])
+        return parseBestDetection(
+            output[0],
+            outputShape[1],
+            outputShape[2]
+        )
     }
 
     private fun bitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
-        val buffer = ByteBuffer.allocateDirect(4 * inputSize * inputSize * 3)
+        val buffer =
+            ByteBuffer.allocateDirect(
+                4 * inputSize * inputSize * 3
+            )
+
         buffer.order(ByteOrder.nativeOrder())
-        val pixels = IntArray(inputSize * inputSize)
-        bitmap.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
+
+        val pixels =
+            IntArray(inputSize * inputSize)
+
+        bitmap.getPixels(
+            pixels,
+            0,
+            inputSize,
+            0,
+            0,
+            inputSize,
+            inputSize
+        )
+
         for (pixel in pixels) {
-            buffer.putFloat(((pixel shr 16) and 0xFF) / 255f)
-            buffer.putFloat(((pixel shr 8) and 0xFF) / 255f)
-            buffer.putFloat((pixel and 0xFF) / 255f)
+            buffer.putFloat(
+                ((pixel shr 16) and 0xFF) / 255f
+            )
+
+            buffer.putFloat(
+                ((pixel shr 8) and 0xFF) / 255f
+            )
+
+            buffer.putFloat(
+                (pixel and 0xFF) / 255f
+            )
         }
+
         buffer.rewind()
+
         return buffer
     }
 
-    private fun parseBestDetection(output: Array<FloatArray>, rows: Int, numAnchors: Int): String? {
-        // rows 0..3 = box coords (cx, cy, w, h); rows 4..end = per-class confidence
+    private fun parseBestDetection(
+        output: Array<FloatArray>,
+        rows: Int,
+        numAnchors: Int
+    ): String? {
+
+        // rows 0..3 = box coords (cx, cy, w, h)
+        // rows 4..end = per-class confidence
+
         var bestScore = 0f
         var bestClass = -1
 
         for (anchor in 0 until numAnchors) {
             for (classIdx in 0 until (rows - 4)) {
-                val score = output[4 + classIdx][anchor]
+
+                val score =
+                    output[4 + classIdx][anchor]
+
                 if (score > bestScore) {
                     bestScore = score
                     bestClass = classIdx
@@ -77,7 +154,13 @@ class PlantScanner(private val context: Context) {
             }
         }
 
-        if (bestClass == -1 || bestScore < CONFIDENCE_THRESHOLD) return null
+        if (
+            bestClass == -1 ||
+            bestScore < CONFIDENCE_THRESHOLD
+        ) {
+            return null
+        }
+
         return LABELS.getOrNull(bestClass)
     }
 }

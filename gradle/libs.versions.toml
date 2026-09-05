@@ -10,7 +10,6 @@ kotlin = "2.2.10"
 composeBom = "2026.02.01"
 camera = "1.6.2"
 navigation = "2.10.0"
-tensorflow = "2.9.0"
 datastore = "1.1.1"
 
 [libraries]
@@ -40,10 +39,6 @@ androidx-camera-view = { group = "androidx.camera", name = "camera-view", versio
 # Navigation
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
 
-# TensorFlow Lite
-tensorflow-lite = { group = "org.tensorflow", name = "tensorflow-lite", version.ref = "tensorflow" }
-tensorflow-lite-support = { group = "org.tensorflow", name = "tensorflow-lite-support", version = "0.4.3" }
-tensorflow-lite-metadata = { group = "org.tensorflow", name = "tensorflow-lite-metadata", version = "0.4.3" }
 
 # DataStore
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
