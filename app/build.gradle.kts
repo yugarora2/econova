@@ -40,10 +40,6 @@ android {
 
 // Force-exclude the duplicate "-api" stub artifacts everywhere in the dependency graph.
 // These ship the same namespace as the main artifact and break AGP's manifest merger.
-configurations.all {
-    exclude(group = "org.tensorflow", module = "tensorflow-lite-api")
-    exclude(group = "org.tensorflow", module = "tensorflow-lite-support-api")
-}
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))

@@ -27,7 +27,7 @@ import androidx.navigation.NavController
 import androidx.core.content.ContextCompat
 import com.econova.econova.data.PlantRepository
 import androidx.compose.ui.unit.dp
-
+import com.econova.econova.logic.PlantScanner
 private val ScanThemeColor = Color(0xFF1B5E20)
 
 private data class LineSpec(
@@ -50,6 +50,7 @@ fun MainScreen(navController: NavController) {
     var hologramState by remember {
         mutableStateOf<Pair<String, Bitmap>?>(null)
     }
+    val plantScanner = remember { PlantScanner(context) }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -158,18 +159,17 @@ fun MainScreen(navController: NavController) {
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = { tapOffset ->
-                                // Only register taps that land inside the visible camera band
                                 if (tapOffset.y < cameraTop || tapOffset.y > cameraBottom) {
                                     return@detectTapGestures
                                 }
-
                                 val previewView = previewViewRef ?: return@detectTapGestures
                                 val frame = previewView.bitmap ?: return@detectTapGestures
-                                val allPlants = PlantRepository.plants.value
-                                if (allPlants.isEmpty()) return@detectTapGestures
-                                val plant = allPlants.random()
                                 val boxSizePx = (screenWidthPx * 0.90f).toInt()
                                 val cropped = cropToCenter(frame, boxSizePx)
+
+                                val detectedId = plantScanner.scanFrame(cropped) ?: return@detectTapGestures
+                                val plant = PlantRepository.getPlant(detectedId) ?: return@detectTapGestures
+
                                 PlantRepository.saveCapturedImage(plant.id, cropped)
                                 hologramState = plant.id to cropped
                             }

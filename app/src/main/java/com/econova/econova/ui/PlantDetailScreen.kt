@@ -44,7 +44,7 @@ fun PlantDetailScreen(plantId: String?, navController: NavController) {
     val headerColor = getRarityColor(plant.rarity)
 
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("About", "Habitat", "Conservation")
+    val tabs = listOf("About", "Conservation")
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -169,14 +169,13 @@ fun PlantDetailScreen(plantId: String?, navController: NavController) {
 
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 when (selectedTab) {
-                    0 -> Text(plant.description, fontSize = 15.sp, lineHeight = 22.sp)
-                    1 -> Text(
-                        "Found in: ${plant.habitat}\n\n${plant.ecologicalImportance}",
+                    0 -> Text(
+                        "${plant.description}\n\nHabitat: ${plant.habitat}",
                         fontSize = 15.sp,
                         lineHeight = 22.sp
                     )
-                    2 -> Text(
-                        "Status: ${plant.conservationStatus}\n\n${plant.ecologicalImportance}",
+                    1 -> Text(
+                        "Status: ${plant.conservationStatus}\n\nHabitat: ${plant.habitat}\n\n${plant.ecologicalImportance}",
                         fontSize = 15.sp,
                         lineHeight = 22.sp
                     )
