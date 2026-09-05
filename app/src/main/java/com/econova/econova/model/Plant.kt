@@ -4,6 +4,7 @@ data class Plant(
     val id: String,
     val name: String,
     val scientificName: String,
+    val family: String,
     val description: String,
     val habitat: String,
     val ecologicalImportance: String,

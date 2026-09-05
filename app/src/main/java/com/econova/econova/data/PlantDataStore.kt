@@ -23,4 +23,10 @@ object PlantDataStore {
             prefs[CAUGHT_PLANT_IDS] = current + plantId
         }
     }
+    suspend fun setUncaught(context: Context, plantId: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[CAUGHT_PLANT_IDS] ?: emptySet()
+            prefs[CAUGHT_PLANT_IDS] = current - plantId
+        }
+    }
 }

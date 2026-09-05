@@ -165,9 +165,9 @@ fun MainScreen(navController: NavController) {
 
                                 val previewView = previewViewRef ?: return@detectTapGestures
                                 val frame = previewView.bitmap ?: return@detectTapGestures
-                                val uncaught = PlantRepository.plants.value.filter { !it.isCaught }
-                                if (uncaught.isEmpty()) return@detectTapGestures
-                                val plant = uncaught.random()
+                                val allPlants = PlantRepository.plants.value
+                                if (allPlants.isEmpty()) return@detectTapGestures
+                                val plant = allPlants.random()
                                 val boxSizePx = (screenWidthPx * 0.90f).toInt()
                                 val cropped = cropToCenter(frame, boxSizePx)
                                 PlantRepository.saveCapturedImage(plant.id, cropped)

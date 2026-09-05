@@ -21,11 +21,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.material.icons.filled.Delete
 import com.econova.econova.data.PlantRepository
 
 @Composable
 fun PlantDetailScreen(plantId: String?, navController: NavController) {
-    val plant = plantId?.let { PlantRepository.getPlant(it) } ?: return
+    val plantState by PlantRepository.plants.collectAsState()
+    val plant = plantId?.let { id -> plantState.find { it.id == id } } ?: return
+    
+    // If plant is no longer caught (e.g. deleted), go back
+    LaunchedEffect(plant.isCaught) {
+        if (!plant.isCaught) {
+            navController.popBackStack()
+        }
+    }
+
     val capturedPaths by PlantRepository.capturedImagePaths.collectAsState()
     val imagePath = capturedPaths[plant.id]
     val capturedBitmap = remember(imagePath) {
@@ -60,6 +70,33 @@ fun PlantDetailScreen(plantId: String?, navController: NavController) {
                 fontSize = 13.sp,
                 modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
             )
+
+            var showDeleteConfirm by remember { mutableStateOf(false) }
+
+            IconButton(
+                onClick = { showDeleteConfirm = true },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White.copy(alpha = 0.7f))
+            }
+
+            if (showDeleteConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteConfirm = false },
+                    title = { Text("Delete ${plant.name}'s data?") },
+                    text = { Text("This removes its captured photo and catch status. You can catch it again later.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            PlantRepository.deletePlantData(plant.id)
+                            showDeleteConfirm = false
+                        }) { Text("Delete", color = Color.Red) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                    }
+                )
+            }
+
             Column(
                 modifier = Modifier.align(Alignment.Center).padding(bottom = 40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally

@@ -28,5 +28,9 @@ object PlantImageStore {
         dir(context).listFiles { f -> f.extension == "jpg" }
             ?.associate { it.nameWithoutExtension to it.absolutePath }
             ?: emptyMap()
+    fun deleteImage(context: Context, plantId: String) {
+        val file = File(dir(context), "$plantId.jpg")
+        if (file.exists()) file.delete()
+    }
 }
 
