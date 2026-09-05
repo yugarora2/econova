@@ -33,9 +33,16 @@ android {
     buildFeatures {
         compose = true
     }
-    aaptOptions {
-        noCompress("tflite")
+    androidResources {
+        noCompress += "tflite"
     }
+}
+
+// Force-exclude the duplicate "-api" stub artifacts everywhere in the dependency graph.
+// These ship the same namespace as the main artifact and break AGP's manifest merger.
+configurations.all {
+    exclude(group = "org.tensorflow", module = "tensorflow-lite-api")
+    exclude(group = "org.tensorflow", module = "tensorflow-lite-support-api")
 }
 
 dependencies {
@@ -49,21 +56,21 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
-    
+
     // CameraX
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
-    
+
     // TensorFlow Lite
     implementation(libs.tensorflow.lite)
     implementation(libs.tensorflow.lite.support)
     implementation(libs.tensorflow.lite.metadata)
-
+    implementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
